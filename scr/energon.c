@@ -14,14 +14,16 @@ Energon command line source code:
 **********************************************************************/
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <argtable2.h>
 #include "ADE7816.h"
 #include "logger.h"
 
-int mymain(int run, int stop, int log, int readRmsReg, int readEnergyReg, int readReg, int writeReg, int writeVal,
-        const char *filename, int filecount)
-    {
-    if (run>0) {
+int mymain(int run, int stop, int log, int stopLog, int readRmsReg, int readEnergyReg, int readReg, int writeReg, int writeVal,
+        const char *filename, int filecount) {
+
+	if (run>0) {
     	if (ADE7816_runDSP() == 0) {printf("dsp running\n");}
     	else {printf("dsp run failed\n");}
     }
@@ -60,40 +62,49 @@ int mymain(int run, int stop, int log, int readRmsReg, int readEnergyReg, int re
 
     // this is the main logging routine entry point
     if (log>0) {
-    	if (ADE7816_init() == 0) {
-    		sqlite3 *db;
-    		// add return value checking
-    		// sould move these calls in to LOGGER locally and just have one void call into LOGGER to start logging.
-    		LOGGER_init(&db);
-    		LOGGER_start(db);
-    		LOGGER_close(db);
-    	}
-    	else {
-    		return -1; // should use proper ERROR codes here
-    	}
+		pid_t childPid;
+
+		switch (childPid = fork()) {
+		case -1: // fork failed
+			printf("Logging process failed to start!\n");
+			return EXIT_FAILURE;
+		case 0:  // Child of successful fork() comes here
+			printf("\nstarting log module...\n");
+			execl("energon-logger", "energon-logger", (char *)NULL);
+			printf("log module not started!\n");
+			_exit(EXIT_FAILURE);
+		default: // Parent comes here after successful fork()
+			printf("Log module PID=%d\n", childPid);
+			break;
+   		}
     }
 
-    return 0;
+    if (stopLog>0) {
+    	printf("does nothing yet\n");
     }
+
+    return EXIT_SUCCESS;
+}
 
 
 int main(int argc, char **argv)
     {
 	// Actually I'm going to need the cal procedure and create bulk reads so I can capture the data I need all at once
 	// Then the other action items will be handy validate the calibration results.
-	struct arg_int  *readReg   = arg_int0("rR","read",NULL,              "read register");
-    struct arg_int  *writeReg  = arg_int0("wW","write",NULL,              "write register");
-    struct arg_int  *writeVal  = arg_int0("vV","value",NULL,              "write register value");
-	struct arg_lit  *run       = arg_lit0(NULL,"run",                      "run dsp");
-	struct arg_lit  *stop      = arg_lit0(NULL,"stop",                      "stop dsp");
-	struct arg_lit  *log       = arg_lit0(NULL,"log",                      "start logging process");
-	struct arg_lit  *readRmsReg   = arg_lit0(NULL,"rms",              "read rms registers");
-	struct arg_lit  *readEnergyReg   = arg_lit0(NULL,"energy",              "read energy registers");
-	struct arg_file *infiles   = arg_file0(NULL,NULL,NULL,       "input file(s)");
-    struct arg_lit  *help    = arg_lit0(NULL,"help",                    "print this help and exit");
-    struct arg_lit  *version = arg_lit0(NULL,"version",                 "print version information and exit");
-    struct arg_end  *end     = arg_end(20);
-    void* argtable[] = {readReg,writeReg,writeVal,run,stop,log,readRmsReg,readEnergyReg,infiles,help,version,end};
+	struct arg_int  *readReg       = arg_int0("rR","read",NULL, "read register");
+    struct arg_int  *writeReg      = arg_int0("wW","write",NULL,"write register");
+    struct arg_int  *writeVal      = arg_int0("vV","value",NULL,"write register value");
+	struct arg_lit  *run           = arg_lit0(NULL,"run",       "run dsp");
+	struct arg_lit  *stop          = arg_lit0(NULL,"stop",      "stop dsp");
+	struct arg_lit  *log           = arg_lit0(NULL,"log",       "start logging process");
+	struct arg_lit  *stopLog       = arg_lit0(NULL,"stoplog",   "stop logging process");
+	struct arg_lit  *readRmsReg    = arg_lit0(NULL,"rms",       "read rms registers");
+	struct arg_lit  *readEnergyReg = arg_lit0(NULL,"energy",    "read energy registers");
+	struct arg_file *infiles       = arg_file0(NULL,NULL,NULL,  "input file(s)");
+    struct arg_lit  *help          = arg_lit0(NULL,"help",      "print this help and exit");
+    struct arg_lit  *version       = arg_lit0(NULL,"version",   "print version information and exit");
+    struct arg_end  *end           = arg_end(20);
+    void* argtable[] = {readReg,writeReg,writeVal,run,stop,log,stopLog,readRmsReg,readEnergyReg,infiles,help,version,end};
     const char* progname = "energon-alpha-one";
     int nerrors;
     int exitcode=0;
@@ -160,7 +171,7 @@ int main(int argc, char **argv)
         }
 
     /* normal case: take the command line options at face value */
-    exitcode = mymain(run->count, stop->count, log->count, readRmsReg->count, readEnergyReg->count, readReg->ival[0], writeReg->ival[0], writeVal->ival[0],
+    exitcode = mymain(run->count, stop->count, log->count, stopLog->count, readRmsReg->count, readEnergyReg->count, readReg->ival[0], writeReg->ival[0], writeVal->ival[0],
                       infiles->filename[0], infiles->count);
 
     exit:

@@ -18,6 +18,7 @@
 
 #define CAL_FILE_NAME    "cal.txt"
 #define CONFIG_FILE_NAME "config.txt"
+#define TEST_FILE_NAME "test.txt"
 
 // Calibration Constants.  Read in from a cal.txt file.
 float vrms_k, iarms_k, ibrms_k, icrms_k, idrms_k, ierms_k, ifrms_k;
@@ -715,25 +716,25 @@ int ADE7816_writeRegister(const unsigned int reg, const unsigned int value)
     {
     	if (reg == reg_table[i].reg)
     	{
-    		printf("write 0x%X %s=", reg, reg_table[i].regstr);
+//    		printf("write 0x%X %s=", reg, reg_table[i].regstr);
     		switch(reg_table[i].regtype)
     		{
     		case u8:
     			length = 1;
-    			printf("0x%X\n", value);
+//    			printf("0x%X\n", value);
     			break;
     		case u16:
     			length = 2;
-    			printf("0x%X\n", value);
+//    			printf("0x%X\n", value);
     			break;
     		case u32:
     			length = 4;
-    			printf("0x%X\n", value);
+//    			printf("0x%X\n", value);
     			break;
     		case s32:
     		case s32_ZPSE:
     			length = 4;
-    			printf("%d\n", value);
+//    			printf("%d\n", value);
     			break;
     		default:
     			break;
@@ -795,7 +796,7 @@ int ADE7816_writeMultipleRegisters(const char *filename)
 			}
 		}
 
-		ADE7816_readRegister(reg);
+//		ADE7816_readRegister(reg);
 	}
 
 	error:
@@ -984,6 +985,55 @@ int ADE7816_readEnergyRegisters(void) {
 	regval = read_S32(buf);
 	energy = (*(int*)&regval) * *(cal_reg_table[kFVARHR].cal_const_value);
 	printf("f VARhr = 0x%X, %.3f\n", regval, energy);
+
+	return 0;
+}
+
+int ADE7816_getEnergyRegisters(ADE7816_energyRegisterValues_t *energyRegVal) {
+	unsigned char buf[4];
+	unsigned int regval;
+
+	readRegister(AWATTHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->awatthr = (*(int*)&regval) * *(cal_reg_table[kAWATTHR].cal_const_value);
+	readRegister(AVARHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->avarhr = (*(int*)&regval) * *(cal_reg_table[kAVARHR].cal_const_value);
+
+	readRegister(BWATTHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->bwatthr = (*(int*)&regval) * *(cal_reg_table[kBWATTHR].cal_const_value);
+	readRegister(BVARHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->bvarhr = (*(int*)&regval) * *(cal_reg_table[kBVARHR].cal_const_value);
+
+	readRegister(CWATTHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->cwatthr = (*(int*)&regval) * *(cal_reg_table[kCWATTHR].cal_const_value);
+	readRegister(CVARHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->cvarhr = (*(int*)&regval) * *(cal_reg_table[kCVARHR].cal_const_value);
+
+	readRegister(DWATTHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->dwatthr = (*(int*)&regval) * *(cal_reg_table[kDWATTHR].cal_const_value);
+	readRegister(DVARHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->dvarhr = (*(int*)&regval) * *(cal_reg_table[kDVARHR].cal_const_value);
+
+	readRegister(EWATTHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->ewatthr = (*(int*)&regval) * *(cal_reg_table[kEWATTHR].cal_const_value);
+	readRegister(EVARHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->evarhr = (*(int*)&regval) * *(cal_reg_table[kEVARHR].cal_const_value);
+
+	readRegister(FWATTHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->fwatthr = (*(int*)&regval) * *(cal_reg_table[kFWATTHR].cal_const_value);
+	readRegister(FVARHR, buf);
+	regval = read_S32(buf);
+	energyRegVal->fvarhr = (*(int*)&regval) * *(cal_reg_table[kFVARHR].cal_const_value);
 
 	return 0;
 }
