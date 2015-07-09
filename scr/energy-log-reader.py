@@ -1,40 +1,36 @@
 import sqlite3
-import httplib, urllib
 import time
+import requests
 
+utc_time = int(time.time())
+interval = utc_time - (utc_time % 900)
+
+print interval
 
 conn = sqlite3.connect('energon.sl3')
-
 c = conn.cursor()
 
-localtime = int(time.time())
-interval = (str(localtime - (localtime % 900)),)
-
-for row in c.execute('SELECT * FROM energylog WHERE timestamp=?', interval):
+for row in c.execute('SELECT * FROM energylog WHERE timestamp=?', (str(interval),)):
 	if row[1] == 'AWATTHR':
-		garage = row[2]
+		garage = '{"id":"andrew.gillan@gmail.com/Garage", "values":[{"d":%.1f, "t":%d}]}' % (row[2], interval*1000)
 	elif row[1] == 'BWATTHR':
-		load2 = row[2]
+		heatPump = '{"id":"andrew.gillan@gmail.com/Heat Pump", "values":[{"d":%.1f, "t":%d}]}' % (row[2], interval*1000)
 	elif row[1] == 'CWATTHR':
-		load3 = row[2]
+		washer = '{"id":"andrew.gillan@gmail.com/Washer", "values":[{"d":%.1f, "t":%d}]}' % (row[2], interval*1000)
 	elif row[1] == 'DWATTHR':
-		load4 = row[2]
+		oven = '{"id":"andrew.gillan@gmail.com/Oven", "values":[{"d":%.1f, "t":%d}]}' % (row[2], interval*1000)
 	elif row[1] == 'EWATTHR':
-		load5 = row[2]
+		waterHeater = '{"id":"andrew.gillan@gmail.com/Water Heater", "values":[{"d":%.1f, "t":%d}]}' % (row[2], interval*1000)
 	elif row[1] == 'FWATTHR':
-		load6 = row[2]
+		dryer = '{"id":"andrew.gillan@gmail.com/Dryer", "values":[{"d":%.1f, "t":%d}]}' % (row[2], interval*1000)
 
-params = urllib.urlencode({'field1': interval,'field2': garage,'field3': load2,'field4': load3,'field5': load5,'field6': load5,'field7': load6, 'key':'N71BQXDNFTABINT7'})     # use your API key generated in the thingspeak channels for the value of 'key'
-
-headers = {"Content-typZZe": "application/x-www-form-urlencoded","Accept": "text/plain"}
-
-conn = httplib.HTTPConnection("api.thingspeak.com:80")                
+series = '[%s, %s, %s, %s, %s, %s]' % (garage, heatPump, washer, oven, waterHeater, dryer)
+payload = {"email":"andrew.gillan@gmail.com", "token":"u1nfAFmevThpNIsHlQcY", "json":series}
 
 try:
-        conn.request("POST", "/update", params, headers)
-        response = conn.getresponse()
-        print response.status, response.reason
-        data = response.read()
-        conn.close()
+	r = requests.post("http://cloud.nimbits.com/service/v2/series", params=payload)
+	print(r.url)
+	print(r.text)
+	print(r.encoding)
 except:
-        print "connection failed"
+        print "post failed"
